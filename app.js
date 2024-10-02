@@ -12,7 +12,7 @@ const app=express();
 const port=process.env.PORT||5000;
 
 
-app.use(cors({origin:["http://localhost:5173"]}))
+app.use(cors({origin:["http://localhost:5173","https://socialmedia-cbf5f.web.app"]}))
 app.use(express.static("public"));
 
 app.use(express.json());
