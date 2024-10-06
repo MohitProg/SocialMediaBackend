@@ -8,6 +8,7 @@ import commentRoute from "./Routes/commentroute.js"
 
 import cors from "cors"
 import bodyparser from "body-parser"
+import { Errormiddleware } from "./Middleware/ErrorMidleware.js"
 const app=express();
 const port=process.env.PORT||5000;
 
@@ -24,7 +25,8 @@ app.use("/api/v1/post",postRoute);
 app.use("/api/v1/post/comment",commentRoute);
 
 
-
+//  using error middleware 
+app.use(Errormiddleware);
 
 db().then(()=>{
     app.listen(port,()=>{

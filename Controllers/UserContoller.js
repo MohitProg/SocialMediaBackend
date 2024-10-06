@@ -4,91 +4,96 @@ import { UploadImageonCloudinary } from "../utils/Cloudinary.js";
 import jwt from "jsonwebtoken";
 import PostModel from "../Modals/PostModel.js";
 
-export const loginUser = async (req, res) => {
+export const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
 
+  // Check if email or password is missing
   if (!email || !password) {
-    return res
-      .status(201)
-      .send({ success: false, message: "please fill All the filled" });
+    const err = new Error("Please fill all the fields");
+    err.status = 400; // 400 Bad Request
+    err.success = false;
+    return next(err); // Return to prevent further execution
   }
 
   try {
+    // Check if user exists
     const existuser = await UserModel.findOne({ email });
-    console.log(existuser);
 
     if (!existuser) {
-      return res
-        .status(201)
-        .send({ success: false, message: "user doesn't exist" });
+      const err = new Error("User does not exist");
+      err.status = 404; // 404 Not Found
+      err.success = false;
+      return next(err); // Return to prevent further execution
     }
 
-    const decodepassword = await bcryptjs.compare(
-      password,
-      existuser?.password
-    );
+    // Compare passwords
+    const decodepassword = await bcryptjs.compare(password, existuser.password);
+
     if (!decodepassword) {
-      return res
-        .status(201)
-        .send({ success: false, message: "please Enter correct password" });
+      const err = new Error("Incorrect password");
+      err.status = 401; // 401 Unauthorized
+      err.success = false;
+      return next(err); // Return to prevent further execution
     }
 
-    const token = await jwt.sign(
-      {
-        id: existuser?.id,
-      },
-      process.env.SECRET_KEY,
-      { expiresIn: "1d" }
-    );
+    // Generate token
+    const token = await jwt.sign({ id: existuser.id }, process.env.SECRET_KEY, {
+      expiresIn: "1d",
+    });
 
     if (!token) {
-      return res
-        .status(201)
-        .send({ success: false, message: "invalid Credentials" });
+      const err = new Error("Failed to generate token");
+      err.status = 500; // 500 Internal Server Error
+      err.success = false;
+      return next(err); // Return to prevent further execution
     }
 
+    // Update user with the new token and return the updated user data
     let updateduser = await UserModel.findByIdAndUpdate(
       { _id: existuser.id },
-      {
-        $set: {
-          token,
-        },
-      },
+      { $set: { token } },
       { new: true }
-    ).select("-password").populate(["followers", "Following", "post"]);
-    return res.status(201).send({
+    )
+      .select("-password")
+      .populate(["followers", "Following", "post"]);
+
+    // Send success response
+    return res.status(200).send({
       success: true,
       updateduser,
-      message: "user login successfully",
+      message: "User logged in successfully",
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).send({ success: false, message: "Server problem" });
+    next(error); // Pass the error to the global error handler
   }
 };
 
 //Create new account
-export const registerUser = async (req, res) => {
+export const registerUser = async (req, res, next) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res
-      .status(201)
-      .send({ success: false, message: "please fill All the filled" });
+    const err = new Error("please fill all the field");
+    err.status = 400;
+    err.success = false;
+    return next(err);
   }
 
   try {
     const existuser = await UserModel.findOne({ email: email });
     if (existuser) {
-      return res
-        .status(201)
-        .send({ success: false, message: "user already exits" });
+      const err = new Error("User Already Exits");
+      err.status = 400;
+      err.success = false;
+      return next(err);
     }
     const hashpassword = await bcryptjs.hash(password, 10);
     if (!hashpassword) {
-      return res
-        .status(201)
-        .send({ success: false, message: "user already exits" });
+      const err = new Error("User Already Exits");
+      err.status = 400;
+      err.success = false;
+      return next(err);
     }
 
     const newuser = new UserModel({
@@ -158,14 +163,13 @@ export const Updateuser = async (req, res) => {
       });
     }
   } catch (error) {
-    console.log(error);
-    return res.status(400).send({ success: false, message: error.message });
+    return next(error);
   }
 };
 
 //  get All user which you are not following
 
-export const GetAlluser = async (req, res) => {
+export const GetAlluser = async (req, res, next) => {
   const query = req.query.new;
   const userId = req.authdata.id;
 
@@ -186,15 +190,12 @@ export const GetAlluser = async (req, res) => {
           .select(["-password", "-token"]);
     return res.status(200).send({ success: true, getAlluser });
   } catch (error) {
-    console.log(error);
-    return res
-      .status(400)
-      .send({ success: false, message: "Internal Server error" });
+    return next(error);
   }
 };
 
 //  get single user  by id reference
-export const Getuser = async (req, res) => {
+export const Getuser = async (req, res, next) => {
   const id = req.params.id;
 
   try {
@@ -211,14 +212,12 @@ export const Getuser = async (req, res) => {
     return res.status(200).send({ success: true, getuser });
   } catch (error) {
     console.log(error);
-    return res
-      .status(400)
-      .send({ success: false, message: "Internal Server error" });
+    return next(error);
   }
 };
 
 //  method to create follower and following
-export const FollowandFollowinguser = async (req, res) => {
+export const FollowandFollowinguser = async (req, res, next) => {
   const followinguserId = req.params.id;
 
   const { id } = req.authdata;
@@ -234,10 +233,10 @@ export const FollowandFollowinguser = async (req, res) => {
       { new: true }
     ).populate(["Following", "followers", "post"]);
 
-    //  getting post of folling user to store 
-    const postoffollowinguserdata=await PostModel.find({postOwner:followingUser?._id}).populate(["postOwner", "likes"]);
-    
-
+    //  getting post of folling user to store
+    const postoffollowinguserdata = await PostModel.find({
+      postOwner: followingUser?._id,
+    }).populate(["postOwner", "likes"]);
 
     const followeruser = await UserModel.findByIdAndUpdate(
       { _id: id },
@@ -249,8 +248,6 @@ export const FollowandFollowinguser = async (req, res) => {
       { new: true }
     ).populate(["Following", "followers", "post"]);
 
-    
-
     if (followingUser && followeruser) {
       return res.send({
         success: true,
@@ -261,12 +258,11 @@ export const FollowandFollowinguser = async (req, res) => {
       });
     }
   } catch (error) {
-    console.log(error);
-    return res.send({ success: false, message: "Internal Server Error" });
+    return next(error);
   }
 };
 
-export const Unfollowfollowinguser = async (req, res) => {
+export const Unfollowfollowinguser = async (req, res, next) => {
   const unfollowuserId = req.params.id;
 
   const { id } = req.authdata;
@@ -290,7 +286,9 @@ export const Unfollowfollowinguser = async (req, res) => {
       },
       { new: true }
     ).populate(["Following", "followers", "post"]);
-    const unfollowuserpost= await PostModel.find({postOwner:unfollowuserId})
+    const unfollowuserpost = await PostModel.find({
+      postOwner: unfollowuserId,
+    });
 
     return res.send({
       success: true,
@@ -300,13 +298,12 @@ export const Unfollowfollowinguser = async (req, res) => {
       message: "Unfollow user Successfully",
     });
   } catch (error) {
-    console.log(error);
-    return res.send({ success: false, message: "Internal Server Error" });
+    return next(error);
   }
 };
 
 //  method to logout user
-export const LogoutUser = async (req, res) => {
+export const LogoutUser = async (req, res, next) => {
   const userid = req.authdata.id;
   try {
     await UserModel.findByIdAndUpdate(
@@ -319,7 +316,6 @@ export const LogoutUser = async (req, res) => {
     );
     return res.send({ success: true, message: "Logout Successfully" });
   } catch (error) {
-    console.log(error);
-    return res.send({ success: false, message: "Internal Server Error" });
+    return next(error);
   }
 };

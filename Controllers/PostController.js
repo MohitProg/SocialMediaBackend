@@ -351,7 +351,10 @@ export const LikeDislikePost = async (req, res) => {
         message: "Dislike the post ",
       });
     }
-  } catch (error) {}
+  } catch (error) {
+
+    
+  }
 };
 
 export const getlistofLikedUser = () => {};
