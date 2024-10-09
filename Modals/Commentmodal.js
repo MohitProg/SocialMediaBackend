@@ -3,27 +3,37 @@ import mongoose from "mongoose";
 const CommentSchema = new mongoose.Schema(
   {
     postId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "post",
-      required:true
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Post',
+      required: true
     },
     senderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user",
-      required:true
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'user',
+      required: true
     },
-
-    message: {
+    text: {
       type: String,
       required: true,
-      trim: true,
-      minlength: 1
-      
-      
+      trim: true
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
+    replies: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Comment' // Refers to the Comment model itself for nested replies
+      }
+    ],
+  
+
   },
   { timestamps: true }
 );
 
 
-export default mongoose.model("commnet",CommentSchema)
+export default mongoose.model("Comment",CommentSchema)

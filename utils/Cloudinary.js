@@ -8,21 +8,38 @@ cloudinary.config({
 });
 
 export const UploadImageonCloudinary = async (imagepath) => {
-  const res = await cloudinary.uploader.upload(imagepath);
-  fs.unlinkSync(imagepath);
+  try {
+    const res = await cloudinary.uploader.upload(imagepath);
+    fs.unlinkSync(imagepath);
 
-  return res.url;
+    return res.url;
+  } catch (error) {
+    console.log(error);
+    fs.unlinkSync(imagepath);
+  }
 };
 
 export const UploadmutipleimagesonCloudinary = async (filearray) => {
-  let fileObject = [];
-  if (filearray.length > 0) {
-    for (let i = 0; i < filearray.length; i++) {
-      const res = await cloudinary.uploader.upload( filearray[i],{resource_type:"auto"})
-      fs.unlinkSync(filearray[i]);
-      fileObject.push(res.url);
+  try {
+    let fileObject = [];
+    if (filearray.length > 0) {
+      for (let i = 0; i < filearray.length; i++) {
+        const res = await cloudinary.uploader.upload(filearray[i], {
+          resource_type: "auto",
+        });
+        fs.unlinkSync(filearray[i]);
+        fileObject.push(res.url);
+      }
+    }
+
+    return fileObject;
+  } catch (error) {
+    console.log(error);
+
+    if (filearray.length > 0) {
+      for (let i = 0; i < filearray.length; i++) {
+        fs.unlinkSync(filearray[i]);
+      }
     }
   }
-
-  return fileObject;
 };
