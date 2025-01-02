@@ -3,6 +3,9 @@ import UserModel from "../Modals/UserModel.js";
 import { UploadImageonCloudinary } from "../utils/Cloudinary.js";
 import jwt from "jsonwebtoken";
 import PostModel from "../Modals/PostModel.js";
+import { SendMail } from "../Middleware/SendMail.js";
+
+//  html content for sending mail
 
 export const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
@@ -58,11 +61,14 @@ export const loginUser = async (req, res, next) => {
       .populate(["followers", "Following", "post"]);
 
     // Send success response
-    return res.status(200).send({
-      success: true,
-      updateduser,
-      message: "User logged in successfully",
-    });
+    return res
+      .status(200)
+      .cookie("auth-token", token, { httpOnly: true, secure: true })
+      .send({
+        success: true,
+        updateduser,
+        message: "User logged in successfully",
+      });
   } catch (error) {
     console.log(error);
     next(error); // Pass the error to the global error handler
@@ -103,6 +109,40 @@ export const registerUser = async (req, res, next) => {
     });
 
     await newuser.save();
+
+    //  mail template
+    const html = ` <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
+    <tr>
+      <td align="center" bgcolor="#4A90E2" style="padding: 20px 0; color: #ffffff;">
+        <h1 style="margin: 0;">Welcome to SocialTech!</h1>
+      </td>
+    </tr>
+    <tr>
+      <td bgcolor="#ffffff" style="padding: 40px 30px 20px;">
+        <h2 style="color: #333333; font-size: 24px; margin: 0;">Hello, ${name}</h2>
+        <p style="color: #666666; font-size: 16px; line-height: 1.6;">
+          We’re excited to welcome you to our community! Thank you for joiningSocialTech.
+          Connect, share, and stay up-to-date with friends, family, and people who share your interests.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td bgcolor="#ffffff" style="padding: 0 30px 40px;">
+        <h3 style="color: #333333; font-size: 20px; margin: 20px 0 10px;">Get Started</h3>
+        <p style="color: #666666; font-size: 16px; line-height: 1.6;">
+          Click the button below to complete your profile, add friends, and start sharing moments.
+        </p>
+        <a href="http://localhost:5173/login" style="display: inline-block; background-color: #4A90E2; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-size: 16px; margin-top: 10px;">Complete Your Profile</a>
+      </td>
+    </tr>
+    <tr>
+      <td bgcolor="#f4f4f4" style="padding: 30px 30px 20px; color: #999999; font-size: 12px; text-align: center;">
+        <p style="margin: 0;">You received this email because you signed up for [Your Social Media Site]. If you have any questions, feel free to contact us.</p>
+        <p style="margin: 0;">&copy; 2024 SocialTech. All rights reserved.</p>
+      </td>
+    </tr>
+  </table>`;
+    SendMail(email, "", html);
 
     if (newuser) {
       return res.status(201).send({
@@ -224,39 +264,43 @@ export const FollowandFollowinguser = async (req, res, next) => {
 
   try {
     const followingUser = await UserModel.findByIdAndUpdate(
-      { _id: followinguserId },
+      followinguserId,
       {
-        $push: {
-          followers: id,
-        },
+        // The $addToSet operator is a MongoDB update operator used to add an element to an array only if it does not already exist. It ensures that duplicates are not added, making it a great choice for managing collections like followers, tags, or any list where uniqueness matters.
+        $addToSet: { followers: followinguserId },
       },
       { new: true }
     ).populate(["Following", "followers", "post"]);
+
+    if (!followingUser) {
+      return res
+        .status(404)
+        .send({ success: false, message: "User to follow not found." });
+    }
 
     //  getting post of folling user to store
     const postoffollowinguserdata = await PostModel.find({
       postOwner: followingUser?._id,
     }).populate(["postOwner", "likes"]);
+    // updating the refrence of user who is following some one
 
     const followeruser = await UserModel.findByIdAndUpdate(
       { _id: id },
       {
-        $push: {
+        $addToSet: {
           Following: followinguserId,
         },
       },
       { new: true }
     ).populate(["Following", "followers", "post"]);
 
-    if (followingUser && followeruser) {
-      return res.send({
-        success: true,
-        followeruser,
-        followingUser,
-        postoffollowinguserdata,
-        message: "following user Successfully",
-      });
-    }
+    return res.send({
+      success: true,
+      followeruser,
+      followingUser,
+      postoffollowinguserdata,
+      message: "following user Successfully",
+    });
   } catch (error) {
     return next(error);
   }
@@ -268,6 +312,13 @@ export const Unfollowfollowinguser = async (req, res, next) => {
   const { id } = req.authdata;
   console.log(id);
   try {
+    if (unfollowuserId === id) {
+      return res
+        .status(400)
+        .send({ success: false, message: "You cannot unfollow yourself." });
+    }
+
+    // update the data of user who is wunfollow some one
     const updateduserdata = await UserModel.findByIdAndUpdate(
       { _id: id },
       {
@@ -277,6 +328,8 @@ export const Unfollowfollowinguser = async (req, res, next) => {
       },
       { new: true }
     ).populate(["Following", "followers", "post"]);
+
+    // update the data
     const unfollowuserdata = await UserModel.findByIdAndUpdate(
       { _id: unfollowuserId },
       {
@@ -286,6 +339,13 @@ export const Unfollowfollowinguser = async (req, res, next) => {
       },
       { new: true }
     ).populate(["Following", "followers", "post"]);
+
+    if (!unfollowuserdata) {
+      return res
+        .status(404)
+        .send({ success: false, message: "User to unfollow not found." });
+    }
+    // updating the post data
     const unfollowuserpost = await PostModel.find({
       postOwner: unfollowuserId,
     });

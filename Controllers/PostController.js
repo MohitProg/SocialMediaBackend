@@ -56,6 +56,7 @@ export const CreatePost = async (req, res) => {
         return res.send({
           success: true,
           CreatePost,
+          userupdated,
           message: "post uploaded successfully",
         });
       } else {
@@ -71,11 +72,12 @@ export const CreatePost = async (req, res) => {
           },
           { new: true }
         );
-        console.log(userupdated);
+       
         return res.send({
           success: true,
+          userupdated,
           CreatePost,
-          message: "post created Successfully",
+          message: "post uploaded Successfully",
         });
       }
     } catch (error) {
@@ -301,10 +303,10 @@ export const GetPostforUserInterest = async (req, res) => {
 
   try {
     const userdata = await UserModel.findOne({ _id: userId });
-    console.log(userdata.Following);
+   
 
     const getpostaccordingtouser = await PostModel.find({
-      postOwner: { $in: userdata.Following },
+      postOwner: { $in: userdata?.Following },
     })
       .populate(["postOwner", "likes"])
       .sort({ createdAt: -1 })

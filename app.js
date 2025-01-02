@@ -1,6 +1,7 @@
 import dotenv from "dotenv"
 dotenv.config()
 import express from "express"
+import cookieParser from "cookie-parser"
 import { db } from "./Database/db.js"
 import UserRoute from "./Routes/userRoutes.js"
 import postRoute from "./Routes/PostRoutes.js"
@@ -15,6 +16,7 @@ const port=process.env.PORT||5000;
 
 app.use(cors({origin:["http://localhost:5173","https://socialmedia-cbf5f.web.app"]}))
 app.use(express.static("public"));
+app.use(cookieParser());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
