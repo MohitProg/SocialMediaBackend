@@ -47,7 +47,7 @@ export const CreatePost = async (req, res) => {
         const userupdated = await UserModel.findByIdAndUpdate(
           { _id: userId },
           {
-            $push: { post: CreatePost?._id },
+            $addToSet: { post: CreatePost?._id },
           },
           { new: true }
         );
@@ -68,11 +68,11 @@ export const CreatePost = async (req, res) => {
         const userupdated = await UserModel.findByIdAndUpdate(
           { _id: userId },
           {
-            $push: { post: CreatePost?._id },
+            $addToSet: { post: CreatePost?._id },
           },
           { new: true }
         );
-       
+
         return res.send({
           success: true,
           userupdated,
@@ -84,67 +84,6 @@ export const CreatePost = async (req, res) => {
       console.log(error, "this is the error");
       return res.send({ success: false, message: "internal Server Error" });
     }
-
-    // });
-
-    // Use multer's upload.array for multiple files
-    // upload.array("files", 4)(req, res, async (err) => {
-    //   if (err instanceof multer.MulterError) {
-    //     return res.send({ success: false, message: err.message });
-    //   } else if (err) {
-    //     return res.send({ success: false, message: err.message });
-    //   }
-
-    //   const userId = req.authdata.id;
-    //   const { desc } = req.body;
-
-    //   try {
-    //     if (!desc) {
-    //       return res.send({
-    //         success: false,
-    //         message: "Please provide a description for your post",
-    //       });
-    //     }
-
-    //     if (req.files && req.files.length > 0) {
-    //       const filepatharray = req.files.map((file) => file.path);
-
-    //       // Assuming this function uploads to Cloudinary and returns an array of image URLs
-    //       const imglinkarray = await UploadmutipleimagesonCloudinary(
-    //         filepatharray
-    //       );
-
-    //       const CreatePost = new PostModel({
-    //         postOwner: userId,
-    //         desc,
-    //         files: imglinkarray,
-    //       });
-
-    //       await CreatePost.save();
-
-    //       const userupdated = await UserModel.findByIdAndUpdate(
-    //         userId,
-    //         { $push: { post: CreatePost._id } },
-    //         { new: true }
-    //       );
-
-    //       return res.send({
-    //         success: true,
-    //         CreatePost,
-    //         message: "Post uploaded successfully",
-    //       });
-    //     } else {
-    //       return res.send({
-    //         success: false,
-    //         message: "No files uploaded",
-    //       });
-    //     }
-    //   } catch (error) {
-    //     return res.send({
-    //       success: false,
-    //       message: "Something went wrong",
-    //     });
-    //   }
   });
 };
 
@@ -207,10 +146,10 @@ export const DeletePost = async (req, res) => {
 
     let publicidobj = [];
     postdata?.files?.forEach((value) => {
-      const obj={};
-      obj["type"]=value.includes("video")?"video":"image"
-      obj["publicid"]=value.split("/").pop().split(".")[0]
-      publicidobj.push(obj)
+      const obj = {};
+      obj["type"] = value.includes("video") ? "video" : "image";
+      obj["publicid"] = value.split("/").pop().split(".")[0];
+      publicidobj.push(obj);
       console.log(value.split("/").pop().split(".")[0]);
     });
 
@@ -218,19 +157,20 @@ export const DeletePost = async (req, res) => {
 
     if (publicidobj?.length > 0) {
       publicidobj.forEach(async (value) => {
-        console.log(value)
+        console.log(value);
         try {
-
-          if(value?.type==="image"){
-            await cloudinary.uploader.destroy(value.publicid,{resource_type:"image"});
-          }else if(value?.type==="video"){
-            await cloudinary.uploader.destroy(value.publicid,{resource_type:"video"});
+          if (value?.type === "image") {
+            await cloudinary.uploader.destroy(value.publicid, {
+              resource_type: "image",
+            });
+          } else if (value?.type === "video") {
+            await cloudinary.uploader.destroy(value.publicid, {
+              resource_type: "video",
+            });
           }
-    
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
-     
       });
 
       await PostModel.findByIdAndDelete({ _id: id });
@@ -303,7 +243,6 @@ export const GetPostforUserInterest = async (req, res) => {
 
   try {
     const userdata = await UserModel.findOne({ _id: userId });
-   
 
     const getpostaccordingtouser = await PostModel.find({
       postOwner: { $in: userdata?.Following },
@@ -333,7 +272,7 @@ export const LikeDislikePost = async (req, res) => {
       const postdata = await PostModel.findByIdAndUpdate(
         { _id: postId },
         {
-          $push: { likes: userId },
+          $addToSet: { likes: userId },
         },
         { new: true }
       ).populate(["postOwner", "likes"]);
@@ -353,10 +292,7 @@ export const LikeDislikePost = async (req, res) => {
         message: "Dislike the post ",
       });
     }
-  } catch (error) {
-
-    
-  }
+  } catch (error) {}
 };
 
 export const getlistofLikedUser = () => {};
